@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from config import settings
-from app.common.database import engine
+from app.common.database import engine, init_db
 from app.auth.router import router as auth_router
 from app.health_data.router import router as health_router
 from app.monitoring.router import router as monitoring_router
@@ -12,10 +12,13 @@ from app.monitoring.router import router as monitoring_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时
-    print("🚀 AI Health Manager API Starting...")
+    print("[START] AI Health Manager API Starting...")
+    # 初始化数据库表
+    await init_db()
+    print("[OK] Database tables initialized")
     yield
     # 关闭时
-    print("👋 Shutting down...")
+    print("[STOP] Shutting down...")
     await engine.dispose()
 
 

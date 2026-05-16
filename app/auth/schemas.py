@@ -1,5 +1,4 @@
 from pydantic import BaseModel, EmailStr, Field
-from uuid import UUID
 from datetime import datetime
 from typing import Optional
 
@@ -22,12 +21,12 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    user_id: Optional[UUID] = None
+    user_id: Optional[str] = None
     username: Optional[str] = None
 
 
 class UserResponse(BaseModel):
-    id: UUID
+    id: str
     username: str
     email: Optional[str] = None
     created_at: datetime

@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from uuid import UUID
 from typing import List
 
 from app.common.database import get_db
 from app.auth.utils import decode_token
+from app.auth.models import User
+from app.auth.router import get_current_user
 from app.monitoring.models import AnomalyAlert
 from app.monitoring.schemas import AnomalyAlertResponse
 from app.monitoring.ws_manager import ws_manager
@@ -20,7 +22,6 @@ async def websocket_alerts(
     token: str = Query(...)
 ):
     """WebSocket告警推送"""
-    # 验证token
     payload = decode_token(token)
     if not payload or payload.get("sub") != user_id:
         await websocket.close(code=4001)
@@ -29,7 +30,6 @@ async def websocket_alerts(
     await ws_manager.connect(user_id, websocket)
     try:
         while True:
-            # 保持连接，可以接收前端心跳
             data = await websocket.receive_text()
             if data == "ping":
                 await websocket.send_text("pong")
@@ -42,11 +42,11 @@ async def get_alert_history(
     skip: int = 0,
     limit: int = 20,
     is_read: bool = None,
-    current_user_id: UUID = None,  # 从认证获取
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """获取告警历史"""
-    query = select(AnomalyAlert).where(AnomalyAlert.user_id == current_user_id)
+    query = select(AnomalyAlert).where(AnomalyAlert.user_id == current_user.id)
     
     if is_read is not None:
         query = query.where(AnomalyAlert.is_read == is_read)
@@ -74,13 +74,13 @@ async def mark_alert_read(
 
 @router.post("/alerts/read-all")
 async def mark_all_alerts_read(
-    current_user_id: UUID = None,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """标记所有告警为已读"""
     result = await db.execute(
         select(AnomalyAlert).where(
-            AnomalyAlert.user_id == current_user_id,
+            AnomalyAlert.user_id == current_user.id,
             AnomalyAlert.is_read == False
         )
     )
@@ -93,14 +93,13 @@ async def mark_all_alerts_read(
 
 @router.get("/alerts/unread-count")
 async def get_unread_count(
-    current_user_id: UUID = None,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """获取未读告警数量"""
-    from sqlalchemy import func
     result = await db.execute(
         select(func.count(AnomalyAlert.id)).where(
-            AnomalyAlert.user_id == current_user_id,
+            AnomalyAlert.user_id == current_user.id,
             AnomalyAlert.is_read == False
         )
     )

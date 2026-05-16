@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
-from uuid import UUID, Optional
+from uuid import UUID
 from datetime import datetime, date
-from typing import List, Dict, Any
+from typing import Optional, List, Dict, Any
 
 
 class HealthProfileCreate(BaseModel):
